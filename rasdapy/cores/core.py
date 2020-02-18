@@ -698,9 +698,8 @@ class Query(object):
             if insert_trans_mdd_resp.status > 0:
                 raise Exception("Error: Transfer failed")
 
-            ras_array_list = ras_array.decompose_mdd()
-
-            for mdd in ras_array_list:
+            mdd_itr = ras_array.decompose_mdd()
+            for mdd in mdd_itr:
                 insert_tile_resp = rassrvr_insert_tile(
                     self.transaction.database.stub,
                     self.transaction.database.connection.session.clientId,

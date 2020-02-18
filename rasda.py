@@ -1,15 +1,15 @@
-from rasdapy.db_connector import DBConnector
-from rasdapy.query_executor import QueryExecutor
+
 import numpy as np
-from rasdapy.cores.remote_procedures import *
 import matplotlib.pyplot as plt
+
+from rasdapy.query_executor import QueryExecutor
+from rasdapy.cores.remote_procedures import *
+from rasdapy.db_connector import DBConnector
 from rasdapy.cores.utils import *
 from rasdapy import ras_oqlquery
-from rasdapy.models.np_gmarray import  NumpyGMArray
-from rasdapy.models.ras_gmarray import RasGMArray
+from ras_gmarray_builder import RasGMArrayBuilder
 
-from read_mongo import read_drp
-from query_result import  QueryResult
+from query_result import QueryResult
 
 def import_raw(db_connector):
     tx = db_connector.db.transaction(rw=True)
@@ -62,7 +62,8 @@ def create_uint8_array(nx, ny):
 
     return a.astype(np.uint8)
 
-def create_3D_array(nx, ny, nz):
+
+def create_3d_array(nx, ny, nz):
     array = np.zeros(shape=(nx, ny, nz), dtype=np.float32)
     print(array.strides)
     value = 0.
@@ -72,10 +73,8 @@ def create_3D_array(nx, ny, nz):
             for k in range(array.shape[2]):
                 array[i, j, k] = value
                 value += increment
-    ras_array = RasGMArray()
-    ras_array.from_np_array(array)
 
-    return ras_array
+    return RasGMArrayBuilder.from_np_array(array)
 
 
 def import_png( query_executor, png_filename ):
@@ -91,10 +90,13 @@ raw_flag = False
 png_flag = False
 array_type_flag = False
 drop_flag = False
-mongo_flag = True
+mongo_flag = False
+dicom_flag = False
 
 if __name__ == '__main__':
+
     db_connector = DBConnector("irlinv-rrbound", 7001, "rasadmin", "rasadmin")
+    #db_connector = None
     query_executor = QueryExecutor(db_connector)
     db_connector.open()
 
@@ -126,9 +128,13 @@ if __name__ == '__main__':
             print(t.decode())
 
     if mongo_flag:
-        img = read_drp()
-        ras_array = RasGMArray()
-        ras_array.from_np_array(img.cube.astype(np.float32))
+        # img = read_drp()
+        # ras_array = RasGMArray()
+        # ras_array.from_np_array(img.cube.astype(np.float32))
+        ras_array = create_3d_array(182, 180, 60)
+        mdd_itr = ras_array.storage_layout.decompose_mdd(ras_array)
+        for mdd in mdd_itr:
+            print(mdd)
         q_result = query_executor.execute_insert("insert into scanner values $1", ras_array)
         if not q_result.error():
             elts = q_result.get_elements()
@@ -143,6 +149,28 @@ if __name__ == '__main__':
         else:
             print(q_result.error_message())
 
+    if dicom_flag:
+        ras_array = RasGMArrayBuilder.from_dicom_dir("D:\\lecomtje\\Datas\\drp4ml\\serie1", "6804_002")
+        mdd_itr = ras_array.storage_layout.decompose_mdd(ras_array)
+        q_result = query_executor.execute_insert("insert into scube values $1", ras_array)
+        if not q_result.error():
+            elts = q_result.get_elements()
+            print(elts)
+            oid = elts[0]
+
+            result = query_executor.execute_read(f"select a[128,*:*,*:*]  from scube as a where oid(a)={oid}")
+            array = result.to_array()
+            plt.imshow(array[:, :])
+            plt.show()
+
+        else:
+            print(q_result.error_message())
+
+    oid = 122369
+    result = query_executor.execute_read(f"select scale(a[110:400, 256, 100:200], 0.5) from scube as a where oid(a)={oid}")
+    array = result.to_array()
+    plt.imshow(array[:, :])
+    plt.show()
     # ras_array = create_3D_array(180, 180, 60)
     # print(ras_array.spatial_domain, ras_array.storage_layout.spatial_domain)
     # # ras_array.decompose_mdd()

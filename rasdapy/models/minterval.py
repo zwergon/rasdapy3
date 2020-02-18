@@ -44,6 +44,13 @@ class MInterval(object):
     def cardinality(self):
         return len(self.intervals)
 
+    @property
+    def shape(self):
+        _shape = []
+        for i in self.intervals:
+            _shape.append(i.hi + 1)
+        return tuple(_shape)
+
     def __str__(self):
         """
         String representing the multiple interval (e.g: [SInterval1, SInterval2] -> [0:250, 0:210]
@@ -69,3 +76,11 @@ class MInterval(object):
 
         minterval = MInterval(result_arr)
         return minterval
+
+
+    @staticmethod
+    def from_shape(shape):
+        intervals = []
+        for i_max in shape:
+            intervals.append(SInterval(0, i_max - 1))
+        return MInterval(intervals)
