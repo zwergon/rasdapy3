@@ -125,7 +125,7 @@ class RasGMArrayBuilder:
 
         gm_array = RasGMArray()
 
-        shape = array.shape + (len(files)-1,)
+        shape = (len(files)-1,) + array.shape
         gm_array.spatial_domain = MInterval.from_shape(shape)
 
         gm_array.type_name = RasGMArrayBuilder.get_type_name(
@@ -138,7 +138,7 @@ class RasGMArrayBuilder:
         gm_array.data = b''
 
         storage_layout = FileStorageLayout(topdir, files, dicom_read_array)
-        storage_layout.spatial_domain = MInterval.from_shape(array.shape + (1,))
+        storage_layout.spatial_domain = MInterval.from_shape((1,) + array.shape)
         gm_array.storage_layout = storage_layout
 
         print(gm_array)

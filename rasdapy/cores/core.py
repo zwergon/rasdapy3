@@ -42,6 +42,10 @@ from rasdapy.stubs.client_rassrvr_service_pb2_grpc import ClientRassrvrServiceSt
 from rasdapy.models.result_array import ResultArray
 from rasdapy.cores.utils import convert_data_from_bin
 from rasdapy.query_result import QueryResult
+from rasdapy.models.ras_gmarray import RasGMArray
+from rasdapy.models.minterval import MInterval
+from rasdapy.models.mdd_types import rDataFormat
+
 
 
 class Connection(object):
@@ -511,23 +515,77 @@ class Query(object):
             if mddstatus == 2:
                 raise Exception("getMDDCollection - no transfer or empty collection")
 
-            tilestatus = 2
-            while tilestatus == 2 or tilestatus == 3:
-                tileresp = rassrvr_get_next_tile(self.transaction.database.stub,
-                                                 self.transaction.database.connection.session.clientId)
-                tilestatus = tileresp.status
-                if tilestatus == 4:
-                    raise Exception("rpcGetNextTile - no tile to transfer or empty collection")
-                else:
-                    data = tileresp.data
-                    result_data.append(data)
+            mdd_result = RasGMArray()
+            tilestatus = self._get_mdd_core(mdd_result, mddresp)
+            result_data.append(mdd_result.data)
 
             if tilestatus == 0:
                 break
 
-        # Close connection to server
         rassrvr_end_transfer(self.transaction.database.stub, self.transaction.database.connection.session.clientId)
+
         return result_data
+
+    def _get_mdd_core(self, mdd_result, mdd_resp):
+
+        mdd_result.spatial_domain = MInterval.from_str(mdd_resp.domain)
+        mdd_result.format = mdd_resp.current_format
+        print(f"full domain {mdd_result.spatial_domain}")
+        tilestatus = 2
+        tileCntr = 0
+        array = b''
+        while tilestatus == 2 or tilestatus == 3:
+            tileresp = rassrvr_get_next_tile(self.transaction.database.stub,
+                                             self.transaction.database.connection.session.clientId)
+            tilestatus = tileresp.status
+            if tilestatus == 4:
+                raise Exception("rpcGetNextTile - no tile to transfer or empty collection")
+
+            if tileCntr == 0:
+                mdd_result.type_length = tileresp.cell_type_length
+            tileCntr += 1
+
+            tile_domain = MInterval.from_str(tileresp.domain)
+            print(f"tile domain {tile_domain}")
+            if mdd_resp.current_format == rDataFormat.r_Array.value:
+
+                # TODO some stuff of rasnetclientcomm.c not yet implemented
+
+                if tilestatus < 2 and tileCntr == 1 and str(tile_domain) == str(mdd_result.spatial_domain):
+                    # MDD consists of just one tile that is the same size of the mdd
+                    array = tileresp.data
+                else:
+                    # MDD consists of more than one tile or the tile does not cover the whole domain
+                    if tileCntr == 1:
+                        size = mdd_result.spatial_domain.cell_count * mdd_result.type_length
+                        print(f"size is {size}")
+                        array = bytearray(size)
+
+                    # copy tile data into MDD data space (optimized, relying on the internal representation of an MDD )
+                    bloc_cells = tile_domain.intervals[tile_domain.cardinality - 1].width
+                    bloc_size = bloc_cells * mdd_result.type_length
+                    bloc_no = int(tile_domain.cell_count / bloc_cells)
+
+                    tile_offset = 0
+                    for bloc_ctr in range(bloc_no):
+                        offset = mdd_result.spatial_domain.cell_offset( tile_domain.cell_point(bloc_ctr*bloc_cells))* mdd_result.type_length
+                        array[offset:offset+bloc_size] = tileresp.data[tile_offset:tile_offset+bloc_size]
+                        tile_offset += bloc_size
+
+            else:
+                raise Exception(f"current format {mdd_resp.current_format} not handled so far")
+
+        mdd_result.data = array
+
+        return tilestatus
+
+    def _concat_array_data(self, data, data_len, data_dict, offset):
+        data_dict[offset] = data
+        return offset + data_len
+
+
+
+
 
     def _get_list_collection(self):
         """

@@ -8,6 +8,7 @@ from rasdapy.db_connector import DBConnector
 from rasdapy.cores.utils import *
 from rasdapy import ras_oqlquery
 from ras_gmarray_builder import RasGMArrayBuilder
+from read_mongo import read_drp
 
 from query_result import QueryResult
 
@@ -56,11 +57,12 @@ def import_raw(db_connector):
         print(q_result.error_message())
 
 
-def create_uint8_array(nx, ny):
-    a = np.arange(nx*ny).reshape((nx, ny))
-    a = a * 127 / (nx*ny)
+def create_uint8_array(nx, ny, nz, with_scaling=True):
+    a = np.arange(nx*ny*nz).reshape((nx, ny, nz))
+    if with_scaling:
+        a = a * 127 / (nx*ny*nz)
 
-    return a.astype(np.uint8)
+    return RasGMArrayBuilder.from_np_array(a.astype(np.uint8))
 
 
 def create_3d_array(nx, ny, nz):
@@ -88,9 +90,10 @@ def import_png( query_executor, png_filename ):
 
 raw_flag = False
 png_flag = False
+array_uint8 = False
 array_type_flag = False
 drop_flag = False
-mongo_flag = False
+mongo_flag = True
 dicom_flag = False
 
 if __name__ == '__main__':
@@ -127,21 +130,32 @@ if __name__ == '__main__':
         for t in list_collection:
             print(t.decode())
 
+    if array_uint8:
+        ras_array = create_uint8_array(4, 3, 2, False)
+        print(ras_array)
+        print(ras_array.data)
+        q_result = query_executor.execute_insert("insert into greycube values $1", ras_array)
+        if not q_result.error():
+            elts = q_result.get_elements()
+            print(elts)
+            oid = elts[0]
+
+            result = query_executor.execute_read(f"select a[1,*:*,*:*]  from greycube as a where oid(a)={oid}")
+            array = result.to_array()
+            print(array)
+            print(array.shape)
+
     if mongo_flag:
-        # img = read_drp()
-        # ras_array = RasGMArray()
-        # ras_array.from_np_array(img.cube.astype(np.float32))
-        ras_array = create_3d_array(182, 180, 60)
-        mdd_itr = ras_array.storage_layout.decompose_mdd(ras_array)
-        for mdd in mdd_itr:
-            print(mdd)
+        img = read_drp()
+        ras_array = RasGMArrayBuilder.from_np_array(img.cube.astype(np.float32))
+        # ras_array = create_3d_array(182, 180, 60)
         q_result = query_executor.execute_insert("insert into scanner values $1", ras_array)
         if not q_result.error():
             elts = q_result.get_elements()
             print(elts)
             oid = elts[0]
 
-            result = query_executor.execute_read(f"select a[*:*,*:*,50]  from scanner as a where oid(a)={oid}")
+            result = query_executor.execute_read(f"select a[150,*:*,*:*]  from scanner as a where oid(a)={oid}")
             array = result.to_array()
             plt.imshow(array[:, :])
             plt.show()
@@ -166,8 +180,9 @@ if __name__ == '__main__':
         else:
             print(q_result.error_message())
 
-    oid = 122369
-    result = query_executor.execute_read(f"select scale(a[110:400, 256, 100:200], 0.5) from scube as a where oid(a)={oid}")
+
+    oid = 129537
+    result = query_executor.execute_read(f"select scale(a[*:*,*:*,128], 2) from scube as a where oid(a)={oid}")
     array = result.to_array()
     plt.imshow(array[:, :])
     plt.show()

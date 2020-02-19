@@ -33,7 +33,7 @@ class FilesMDDIterator:
 
             ras_array = RasGMArray()
             interval = SInterval(z, z)
-            ras_array.spatial_domain = MInterval([self.storage_intervals[0], self.storage_intervals[1], interval])
+            ras_array.spatial_domain = MInterval([interval, self.storage_intervals[1], self.storage_intervals[2]])
             ras_array.storage_layout = RasStorageLayOut(self.gm_array.type_length, ras_array.spatial_domain)
             ras_array.type_name = self.gm_array.type_name
             ras_array.type_length = self.gm_array.type_length

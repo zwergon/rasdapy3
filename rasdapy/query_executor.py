@@ -121,7 +121,7 @@ class QueryExecutor(object):
             tile_domain = MInterval.from_str(tile_domain)
 
         # Create helper objects to build POST query string to rasserver
-        storage_layout = RasStorageLayOut(tile_domain, tile_size)
+        storage_layout = RasStorageLayOut(spatial_domain=tile_domain, tile_size=tile_size)
         gmarray = RasGMArray(mdd_domain, mdd_type, mdd_type_length, data, storage_layout)
 
         return self.execute_update(query, gmarray)
