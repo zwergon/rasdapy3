@@ -1,5 +1,7 @@
 
 import numpy as np
+import pydicom
+import os
 import matplotlib.pyplot as plt
 
 from rasdapy.query_executor import QueryExecutor
@@ -7,10 +9,23 @@ from rasdapy.cores.remote_procedures import *
 from rasdapy.db_connector import DBConnector
 from rasdapy.cores.utils import *
 from rasdapy import ras_oqlquery
-from ras_gmarray_builder import RasGMArrayBuilder
-from read_mongo import read_drp
-
+from models.ras_gmarray_builder import RasGMArrayBuilder
+from example.read_mongo import read_drp
 from query_result import QueryResult
+
+
+def dicom_read_array(filename):
+    dataset = pydicom.dcmread(filename)
+    return dataset.pixel_array
+
+
+def create_files(topdir, root_name):
+    files = []
+    for r, d, f in os.walk(topdir):
+        for file in f:
+            if root_name in file:
+                files.append(os.path.join(topdir, file))
+    return files
 
 def import_raw(db_connector):
     tx = db_connector.db.transaction(rw=True)
@@ -93,7 +108,7 @@ png_flag = False
 array_uint8 = False
 array_type_flag = False
 drop_flag = False
-mongo_flag = True
+mongo_flag = False
 dicom_flag = False
 
 if __name__ == '__main__':
@@ -164,7 +179,8 @@ if __name__ == '__main__':
             print(q_result.error_message())
 
     if dicom_flag:
-        ras_array = RasGMArrayBuilder.from_dicom_dir("D:\\lecomtje\\Datas\\drp4ml\\serie1", "6804_002")
+        files = create_files("D:\\lecomtje\\Datas\\drp4ml\\serie1", "6804_002")
+        ras_array = RasGMArrayBuilder.from_files(files, dicom_read_array)
         mdd_itr = ras_array.storage_layout.decompose_mdd(ras_array)
         q_result = query_executor.execute_insert("insert into scube values $1", ras_array)
         if not q_result.error():
@@ -181,8 +197,8 @@ if __name__ == '__main__':
             print(q_result.error_message())
 
 
-    oid = 129537
-    result = query_executor.execute_read(f"select scale(a[*:*,*:*,128], 2) from scube as a where oid(a)={oid}")
+    oid = 513
+    result = query_executor.execute_read(f"select a[*:*,*:*,128] from fs3_cube as a where oid(a)={oid}")
     array = result.to_array()
     plt.imshow(array[:, :])
     plt.show()

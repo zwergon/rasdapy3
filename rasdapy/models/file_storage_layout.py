@@ -7,9 +7,8 @@ from rasdapy.models.sinterval import SInterval
 
 class FileStorageLayout(RasStorageLayOut):
 
-    def __init__(self, topdir, files, reader):
+    def __init__(self,  files, reader):
         RasStorageLayOut.__init__(self)
-        self.topdir = topdir
         self.files = files
         self.reader = reader
 
@@ -26,7 +25,7 @@ class FilesMDDIterator:
 
     def __iter__(self):
         for z, file in enumerate(self.layout.files):
-            array = self.layout.reader(os.path.join(self.layout.topdir, file))
+            array = self.layout.reader(file)
             byte_size = array.size*self.gm_array.type_length
             if byte_size > RasStorageLayOut.DEFAULT_TILE_SIZE:
                 raise Exception(f"tile size {byte_size} is bigger than maximum {RasStorageLayOut.DEFAULT_TILE_SIZE} size")

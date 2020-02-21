@@ -1,17 +1,12 @@
-
-import os
 import numpy as np
-import pydicom
 from rasdapy.models.sinterval import SInterval
 from rasdapy.models.minterval import MInterval
 from rasdapy.models.ras_storage_layout import BandStorageLayout
 from rasdapy.models.ras_gmarray import RasGMArray
-from file_storage_layout import FileStorageLayout
+from models.file_storage_layout import FileStorageLayout
 
 
-def dicom_read_array(filename):
-    dataset = pydicom.dcmread(filename)
-    return dataset.pixel_array
+
 
 
 class RasGMArrayBuilder:
@@ -113,15 +108,16 @@ class RasGMArrayBuilder:
         return gm_array
 
     @staticmethod
-    def from_dicom_dir(topdir, root_name):
+    def from_files(files, read_fct):
+        """
 
-        files = []
-        for r, d, f in os.walk(topdir):
-            for file in f:
-                if root_name in file:
-                    files.append(file)
+        :param files: collections of nz absolute file path names that point to 2D images with same nx*ny size.
+        One 2D image at evenly spaced z position.  So a 3D array (nx, ny, nz) is obtained
+        :param read_fct: fonction that gives for a path filename a python array (with array.shape, array.dtype)
+        :return: a RasGMArray
+        """
 
-        array = dicom_read_array(os.path.join(topdir, files[0]))
+        array = read_fct(files[0])
 
         gm_array = RasGMArray()
 
@@ -137,7 +133,7 @@ class RasGMArrayBuilder:
 
         gm_array.data = b''
 
-        storage_layout = FileStorageLayout(topdir, files, dicom_read_array)
+        storage_layout = FileStorageLayout(files, read_fct)
         storage_layout.spatial_domain = MInterval.from_shape((1,) + array.shape)
         gm_array.storage_layout = storage_layout
 
