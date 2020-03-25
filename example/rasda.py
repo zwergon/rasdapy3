@@ -10,7 +10,7 @@ from rasdapy.db_connector import DBConnector
 from rasdapy.cores.utils import *
 from rasdapy import ras_oqlquery
 from models.ras_gmarray_builder import RasGMArrayBuilder
-from example.read_mongo import read_drp
+#from example.read_mongo import read_drp
 from query_result import QueryResult
 
 
@@ -108,7 +108,7 @@ png_flag = False
 array_uint8 = False
 array_type_flag = False
 drop_flag = False
-mongo_flag = False
+mongo_flag = True
 dicom_flag = False
 
 if __name__ == '__main__':
@@ -161,9 +161,13 @@ if __name__ == '__main__':
             print(array.shape)
 
     if mongo_flag:
-        img = read_drp()
-        ras_array = RasGMArrayBuilder.from_np_array(img.cube.astype(np.float32))
-        # ras_array = create_3d_array(182, 180, 60)
+        #img = read_drp()
+        #ras_array = RasGMArrayBuilder.from_np_array(img.cube.astype(np.float32))
+        ras_array = create_3d_array(182, 180, 60)
+        mdd_itr = ras_array.storage_layout.decompose_mdd(ras_array)
+        for mdd in mdd_itr:
+            print(mdd.spatial_domain)
+        exit(0)
         q_result = query_executor.execute_insert("insert into scanner values $1", ras_array)
         if not q_result.error():
             elts = q_result.get_elements()

@@ -23,8 +23,13 @@ class QueryResult:
                                                        self.line_no,
                                                        self.col_no,
                                                        self.token)
+
     def get_elements(self):
         return self.elements
+
+    @property
+    def size(self):
+        return len(self.elements)
 
     def from_streamed_response(self, repl: StreamedHttpQueryRepl):
         barray = bytearray(repl.data)

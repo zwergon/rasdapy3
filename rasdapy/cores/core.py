@@ -68,7 +68,11 @@ class Connection(object):
         self.port = port
         self.username = username
         self.password = password
-        self.channel = grpc.insecure_channel(f"{hostname}:{port}")
+        options = [
+            ('grpc.max_send_message_length', 100 * 1024 * 1024),
+            ('grpc.max_receive_message_length', 100 * 1024 * 1024)
+        ]
+        self.channel = grpc.insecure_channel(f"{hostname}:{port}", options=options)
         self.stub = RasmgrClientServiceStub(self.channel)
         self.session = None
         self._rasmgr_keep_alive_running = None
@@ -172,7 +176,11 @@ class Database(object):
                                         self.name)
         if self.rasmgr_db.dbSessionId == self.connection.session.clientUUID:
             self.connection._stop_keep_alive()
-        self.channel = grpc.insecure_channel(f"{self.rasmgr_db.serverHostName}:{self.rasmgr_db.port}")
+        options = [
+            ('grpc.max_send_message_length', 100 * 1024 * 1024),
+            ('grpc.max_receive_message_length', 100 * 1024 * 1024)
+        ]
+        self.channel = grpc.insecure_channel(f"{self.rasmgr_db.serverHostName}:{self.rasmgr_db.port}", options=options)
         self.stub = ClientRassrvrServiceStub(self.channel)
         self.rassrvr_db = rassrvr_open_db(self.stub,
                                           self.connection.session.clientId,
@@ -530,7 +538,7 @@ class Query(object):
 
         mdd_result.spatial_domain = MInterval.from_str(mdd_resp.domain)
         mdd_result.format = mdd_resp.current_format
-        print(f"full domain {mdd_result.spatial_domain}")
+        # print(f"full domain {mdd_result.spatial_domain}")
         tilestatus = 2
         tileCntr = 0
         array = b''
@@ -546,7 +554,7 @@ class Query(object):
             tileCntr += 1
 
             tile_domain = MInterval.from_str(tileresp.domain)
-            print(f"tile domain {tile_domain}")
+            # print(f"tile domain {tile_domain}")
             if mdd_resp.current_format == rDataFormat.r_Array.value:
 
                 # TODO some stuff of rasnetclientcomm.c not yet implemented
@@ -573,7 +581,10 @@ class Query(object):
                         tile_offset += bloc_size
 
             else:
-                raise Exception(f"current format {mdd_resp.current_format} not handled so far")
+                if tileCntr == 1:
+                    array = tileresp.data
+                else:
+                    raise Exception(f"current format {mdd_resp.current_format} not handled so far with tileCntr > 1")
 
         mdd_result.data = array
 

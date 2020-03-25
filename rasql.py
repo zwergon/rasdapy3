@@ -27,6 +27,7 @@ import re
 from rasdapy.db_connector import DBConnector
 from rasdapy.query_executor import QueryExecutor
 from rasdapy.models.result_array import ResultArray
+from rasdapy.query_result import QueryResult
 
 SUCCESS = 0
 ERROR = 1
@@ -160,6 +161,12 @@ class Main:
             print("rasql done.")
 
     def __handle_result(self, res_arr):
+
+        if isinstance(res_arr, QueryResult):
+            if res_arr.with_error:
+                sys.stderr.write(res_arr.error_message())
+                return
+
         """
         Handle the result of query from rasserver
         :param list res_arr: list of result which can be MDDArray or scalar values

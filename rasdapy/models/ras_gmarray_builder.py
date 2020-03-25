@@ -3,7 +3,7 @@ from rasdapy.models.sinterval import SInterval
 from rasdapy.models.minterval import MInterval
 from rasdapy.models.ras_storage_layout import BandStorageLayout
 from rasdapy.models.ras_gmarray import RasGMArray
-from models.file_storage_layout import FileStorageLayout
+from rasdapy.models.file_storage_layout import FileStorageLayout
 
 
 
