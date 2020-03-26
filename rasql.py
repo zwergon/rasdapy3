@@ -28,11 +28,12 @@ from rasdapy.db_connector import DBConnector
 from rasdapy.query_executor import QueryExecutor
 from rasdapy.models.result_array import ResultArray
 from rasdapy.query_result import QueryResult
+from rasdapy.cores.utils import encoded_bytes_to_str
 
 SUCCESS = 0
 ERROR = 1
 
-LOCALHOST = "irlinv-rrbound"
+LOCALHOST = "localhost"
 RASMG_PORT = 7001
 RASBASE = "RASBASE"
 RASGUEST = "rasguest"
@@ -196,7 +197,7 @@ class Main:
         output = "Query result collection has {} element(s): \n".format(res_arr.size)
         if res_arr.size > 0:
             for index, res in enumerate(res_arr):
-                msg = res.decode() if res_arr.is_object else res
+                msg = encoded_bytes_to_str(res) if res_arr.is_object else res
                 output += "  Result {} {}: {}\n".format(res_arr.nature, index + 1, msg)
         print(output.strip())
 
