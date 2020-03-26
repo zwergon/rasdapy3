@@ -1,0 +1,4 @@
+rasdapy/__pycache__
+rasdapy/*/__pycache__
+example/__pycache__
+.idea/*
