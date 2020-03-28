@@ -68,8 +68,8 @@ class QueryExecutor(object):
         # Then, it can run the query to update collection with MDArray from input file
         self.ras_oqlquery.create(query)
         self.ras_oqlquery.bind(gmarray)
-        query_result = self.ras_oqlquery.execute()
 
+        query_result = self.ras_oqlquery.execute()
         return query_result
 
     def execute_insert(self, query, gmarray: RasGMArray):
@@ -77,7 +77,7 @@ class QueryExecutor(object):
         self.ras_oqlquery.create(query)
         self.ras_oqlquery.bind(gmarray)
 
-        query_result = self.ras_oqlquery.insert_query()
+        query_result = self.ras_oqlquery.execute()
         return query_result
 
     def execute_update_from_file(self, query, file_path, mdd_domain=None, mdd_type=RasGMArray.DEFAULT_MDD_TYPE,
@@ -125,3 +125,20 @@ class QueryExecutor(object):
         gmarray = RasGMArray(mdd_domain, mdd_type, mdd_type_length, data, storage_layout)
 
         return self.execute_update(query, gmarray)
+
+    def insert(self, query, gmarray: RasGMArray):
+
+        self.ras_oqlquery.create(query)
+        self.ras_oqlquery.bind(gmarray)
+
+        # return QueryResult
+        return self.ras_oqlquery.insert_query()
+
+    def update(self, query, gmarray: RasGMArray):
+
+        self.ras_oqlquery.create(query)
+        self.ras_oqlquery.bind(gmarray)
+
+        # return QueryResult
+        return self.ras_oqlquery.update_query()
+

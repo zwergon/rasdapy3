@@ -132,7 +132,7 @@ class RasOQLQuery(object):
                                 self.BIG_ENDIAN, len(self.params), len(mdd_data))
             request_query = b''.join([request_query.encode(), mdd_data])
             query = txn.query(request_query)
-            res = query.execute_write_with_file()
+            res = query.execute_streamed_http()
             txn.commit()
 
             return res
@@ -153,7 +153,19 @@ class RasOQLQuery(object):
         query = txn.query(self.query)  # core.Query
         query.mdd_constants = [ras_array for ras_array in self.params if isinstance(ras_array, RasGMArray)]
 
-        res = query.execute()
+        res = query.execute_insert()
+        txn.commit()
+
+        return res
+
+    def update_query(self):
+
+        txn = self.db_connector.db.transaction(rw=True)
+
+        query = txn.query(self.query)  # core.Query
+        query.mdd_constants = [ras_array for ras_array in self.params if isinstance(ras_array, RasGMArray)]
+
+        res = query.execute_update()
         txn.commit()
 
         return res

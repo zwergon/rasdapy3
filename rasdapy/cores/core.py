@@ -425,8 +425,7 @@ class Query(object):
         self.query_str = query_str
         self.mdd_constants = None
 
-
-    def execute_write_with_file(self):
+    def execute_streamed_http(self):
         """
         Execute a full request query (not only the rasql query from user input) to rasserver which contains
         all the information about the MDD Array from the file to be used to update rasdaman collection.
@@ -454,7 +453,11 @@ class Query(object):
             raise Exception("Transaction does not have write access")
 
         if self.mdd_constants is not None:
-            pass
+            self._send_mdd_constants()
+
+        for i, param in enumerate(self.mdd_constants):
+            tmp = str(i + 1)
+            self.query_str = self.query_str.replace("$" + tmp, "#MDD" + tmp + "#")
 
         exec_update_query_resp = rassrvr_execute_update_query(
             self.transaction.database.stub,
@@ -472,6 +475,40 @@ class Query(object):
         if exec_update_query_resp.status > 3:
             raise Exception("Error: Transfer failed")
         return qr
+
+    def execute_insert(self):
+
+        iqr = QueryResult()
+
+        if self.transaction.rw is False:
+            raise Exception("Transaction does not have write access")
+
+        if self.mdd_constants is not None:
+            self._send_mdd_constants()
+
+        for i, param in enumerate(self.mdd_constants):
+            tmp = str(i + 1)
+            self.query_str = self.query_str.replace("$" + tmp, "#MDD" + tmp + "#")
+
+        exec_insert_query_resp = rassrvr_execute_insert_query(
+            self.transaction.database.stub,
+            self.transaction.database.connection.session.clientId,
+            self.query_str
+        )
+
+        if exec_insert_query_resp.status == 0:
+            iqr.elements = self._get_mdd_collection()
+        elif exec_insert_query_resp.status == 1:
+            type_struct = get_type_structure_from_string(exec_insert_query_resp.type_structure)
+            iqr.elements = self._get_element_collection(type_struct)
+        elif exec_insert_query_resp.status == 2:
+            # empty result, should not be treated as default case
+            pass
+        else:
+            print(
+                f"Internal error: RasnetClientComm::executeQuery(): illegal status value {exec_insert_query_resp.status}")
+
+        return iqr
 
     def execute_read(self):
         """
@@ -594,10 +631,6 @@ class Query(object):
         data_dict[offset] = data
         return offset + data_len
 
-
-
-
-
     def _get_list_collection(self):
         """
         Return the list of collection names from RASBASE for query (select c from RAS_COLLECTIONNAMES as c)
@@ -658,38 +691,6 @@ class Query(object):
 
         return result_arr
 
-    def execute(self):
-
-        iqr = QueryResult()
-
-        if self.transaction.rw is False:
-            raise Exception("Transaction does not have write access")
-
-        if self.mdd_constants is not None:
-            self._send_mdd_constants()
-
-        for i, param in enumerate(self.mdd_constants):
-            tmp = str(i + 1)
-            self.query_str = self.query_str.replace("$" + tmp, "#MDD" + tmp + "#")
-
-        exec_insert_query_resp = rassrvr_execute_insert_query(
-            self.transaction.database.stub,
-            self.transaction.database.connection.session.clientId,
-            self.query_str
-        )
-
-        if exec_insert_query_resp.status == 0:
-            iqr.elements = self._get_mdd_collection()
-        elif exec_insert_query_resp.status == 1:
-            type_struct = get_type_structure_from_string(exec_insert_query_resp.type_structure)
-            iqr.elements = self._get_element_collection(type_struct)
-        elif exec_insert_query_resp.status == 2:
-            # empty result, should not be treated as default case
-            pass
-        else:
-            print(f"Internal error: RasnetClientComm::executeQuery(): illegal status value {exec_insert_query_resp.status}")
-
-        return iqr
 
     def _get_element_collection(self, type_struct):
         rpc_status = 0
