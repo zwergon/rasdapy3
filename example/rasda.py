@@ -4,12 +4,8 @@ import os
 import matplotlib.pyplot as plt
 
 from rasdapy.query_executor import QueryExecutor
-from rasdapy.cores.remote_procedures import *
 from rasdapy.db_connector import DBConnector
-from rasdapy.cores.utils import *
-from rasdapy import ras_oqlquery
 from rasdapy.models.ras_gmarray_builder import RasGMArrayBuilder
-from rasdapy.query_result import QueryResult
 from rasdapy.models.ras_storage_layout import  RasStorageLayOut
 
 
@@ -67,7 +63,7 @@ png_flag = True
 array_uint8 = True
 array_type_flag = True
 drop_flag = True
-mongo_flag = True
+array_float = True
 dicom_flag = False
 
 if __name__ == '__main__':
@@ -120,7 +116,7 @@ if __name__ == '__main__':
             print(array)
             print(array.shape)
 
-    if mongo_flag:
+    if array_float:
 
         ras_array = create_3d_array(182, 180, 60)
         query_executor.execute_write("create collection floatcube FloatSet3")

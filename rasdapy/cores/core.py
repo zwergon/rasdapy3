@@ -537,7 +537,7 @@ class Query(object):
             return self._get_element_result(exec_query_resp)
         elif exec_query_resp.status == 2:
             # Query can return empty collection (e.g: select c from c where all_cells( c > 20 )) which returns empty
-            pass
+            return ResultArray("string") # empty array
         else:
             raise Exception("Unknown status code: " + str(
                 exec_query_resp.status) + " returned by ExecuteQuery")
