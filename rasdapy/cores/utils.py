@@ -142,7 +142,7 @@ def get_type_structure_from_string(input_str):
     return result
 
 
-def convert_data_from_bin(dtype, data, big_endian=True):
+def convert_data_from_bin(dtype, data, big_endian=False):
     """
     Unpack string binary to meaningful data
     https://docs.python.org/2/library/struct.html

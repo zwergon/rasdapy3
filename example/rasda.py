@@ -27,61 +27,17 @@ def create_files(topdir, root_name):
     return files
 
 
-def import_raw(db_connector):
-    tx = db_connector.db.transaction(rw=True)
-    database = db_connector.db
-
-    command_id = 11  # ras_oqlquery.RasOQLQuery.__COMMAND_QUERY_EXEC
-    big_endian = ras_oqlquery.RasOQLQuery.BIG_ENDIAN
-
-    bin_data = bytes(np.array([0, 12, 127, 245], dtype=np.int8))
-    query = "insert into gs1 values #MDD1#"
-    mdd_data = [
-        int_to_bytes(1),
-        str_to_encoded_bytes("GreyString"),
-        str_to_encoded_bytes(""),
-        int_to_bytes(1),
-        str_to_encoded_bytes("[0:3]"),
-        str_to_encoded_bytes("[0:127999]"),
-        str_to_encoded_bytes("||0.0"),
-        int_to_bytes(4)]
-    mdd_bytes = b''.join(mdd_data) + bin_data
-
-    request_query = "Command={}&ClientID={}&QueryString={}&Endianess={}" \
-                    "&NumberOfQueryParameters={}&BinDataSize={}&BinData=".format(
-        command_id, database.connection.session.clientId, query,
-        big_endian, 1, len(mdd_bytes))
-
-    raw = request_query.encode() + mdd_bytes
-
-    print(raw)
-
-    reply = rassrvr_begin_streamed_http_query(
-        database.stub,
-        database.connection.session.clientUUID,
-        raw)
-
-    tx.commit()
-
-    q_result = QueryResult()
-    q_result.from_streamed_response(reply)
-    if not q_result.error():
-        elts = q_result.get_elements()
-        print(elts)
-    else:
-        print(q_result.error_message())
-
-
 def create_uint8_array(nx, ny, nz, with_scaling=True):
-    a = np.arange(nx*ny*nz).reshape((nx, ny, nz))
+    a = np.arange(nx*ny*nz, dtype=np.uint8).reshape((nx, ny, nz))
     if with_scaling:
         a = a * 127 / (nx*ny*nz)
 
+    print(a.dtype.byteorder)
     return RasGMArrayBuilder.from_np_array(a.astype(np.uint8))
 
 
 def create_3d_array(nx, ny, nz):
-    array = np.zeros(shape=(nx, ny, nz), dtype=np.float32)
+    array = np.zeros(shape=(nx, ny, nz), dtype=np.dtype('f'))
     print(array.strides)
     value = 0.
     increment = 255. / (nx * ny * nz)
@@ -90,6 +46,10 @@ def create_3d_array(nx, ny, nz):
             for k in range(array.shape[2]):
                 array[i, j, k] = value
                 value += increment
+
+    print(array.dtype.byteorder)
+    plt.imshow(array[100, :, :])
+    plt.show()
 
     return RasGMArrayBuilder.from_np_array(array)
 
@@ -103,7 +63,6 @@ def import_png( query_executor, png_filename ):
     else:
         print(q_result.error_message())
 
-raw_flag = True
 png_flag = True
 array_uint8 = True
 array_type_flag = True
@@ -125,9 +84,6 @@ if __name__ == '__main__':
             print(t)
 
     query_executor.execute_write("create collection gs1 GreySet1")
-
-    if raw_flag:
-        import_raw(db_connector)
 
     if png_flag:
         query_executor.execute_write("create collection mr GreySet")

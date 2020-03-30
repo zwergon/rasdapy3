@@ -197,7 +197,7 @@ class Main:
         output = "Query result collection has {} element(s): \n".format(res_arr.size)
         if res_arr.size > 0:
             for index, res in enumerate(res_arr):
-                msg = encoded_bytes_to_str(res) if res_arr.is_object else res
+                msg = res if res_arr.is_object else res
                 output += "  Result {} {}: {}\n".format(res_arr.nature, index + 1, msg)
         print(output.strip())
 
