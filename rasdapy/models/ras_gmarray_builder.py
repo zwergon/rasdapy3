@@ -1,16 +1,21 @@
+import os
 import numpy as np
 from rasdapy.models.sinterval import SInterval
 from rasdapy.models.minterval import MInterval
 from rasdapy.models.ras_storage_layout import BandStorageLayout
 from rasdapy.models.ras_gmarray import RasGMArray
-from rasdapy.models.file_storage_layout import FileStorageLayout
-
-
-
+from rasdapy.models.file_storage_layout import RasStorageLayOut, FileStorageLayout
+from rasdapy.cores.utils import get_tiling_domain
 
 
 class RasGMArrayBuilder:
-
+    """
+    Utils class that owns only static method to create a RasGMArray from different
+    kinds of sources :
+    - numpy.array,
+    - collection of files,
+    - or even single file (png, ...)
+    """
     type_dict = {
         "bool": {
             1: "BoolString",
@@ -139,3 +144,43 @@ class RasGMArrayBuilder:
 
         print(gm_array)
         return gm_array
+
+    @staticmethod
+    def from_file(file_path,
+                  mdd_domain=None,
+                  mdd_type=RasGMArray.DEFAULT_MDD_TYPE,
+                  mdd_type_length=RasGMArray.DEFAULT_TYPE_LENGTH,
+                  tile_domain=None,
+                  tile_size=RasStorageLayOut.DEFAULT_TILE_SIZE):
+
+        if not os.path.isfile(file_path):
+            raise Exception("File {} to be inserted to rasdaman collection does not exist.".format(file_path))
+
+            # The data sent to rasserver is binary file content, not file_path
+        with open(file_path, mode='rb') as file:
+            data = file.read()
+
+            # NOTE: with insert into values decode($1), it doesn't need to specify --mdddomain and --mddtype
+            # but with values $1 it needs to specify these parameters
+        if mdd_domain is None:
+            mdd_domain = "[0:" + str(len(data) - 1) + "]"
+        if mdd_type is None:
+            mdd_type = RasGMArray.DEFAULT_MDD_TYPE
+
+            # Parse str values of mdd_domain and tile_domain to MInterval objects
+        mdd_domain = MInterval.from_str(mdd_domain)
+
+        # tile* are not parameters from "insert into value from file" in rasql client, so calculate it internally
+        if tile_domain is None:
+            dim = len(mdd_domain.intervals)
+            tile_domain = get_tiling_domain(dim, mdd_type_length, tile_size)
+        else:
+            tile_domain = MInterval.from_str(tile_domain)
+
+        # Create helper objects to build POST query string to rasserver
+        storage_layout = RasStorageLayOut(spatial_domain=tile_domain, tile_size=tile_size)
+        return RasGMArray(mdd_domain,
+                          mdd_type,
+                          mdd_type_length,
+                          data,
+                          storage_layout)

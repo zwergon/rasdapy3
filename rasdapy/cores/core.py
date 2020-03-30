@@ -40,7 +40,7 @@ from rasdapy.cores.remote_procedures import *
 from rasdapy.stubs.rasmgr_client_service_pb2_grpc import RasmgrClientServiceStub
 from rasdapy.stubs.client_rassrvr_service_pb2_grpc import ClientRassrvrServiceStub
 from rasdapy.models.result_array import ResultArray
-from rasdapy.cores.utils import convert_data_from_bin
+from rasdapy.cores.utils import convert_data_from_bin, encoded_bytes_to_str
 from rasdapy.query_result import QueryResult
 from rasdapy.models.ras_gmarray import RasGMArray
 from rasdapy.models.minterval import MInterval
@@ -455,10 +455,6 @@ class Query(object):
         if self.mdd_constants is not None:
             self._send_mdd_constants()
 
-        for i, param in enumerate(self.mdd_constants):
-            tmp = str(i + 1)
-            self.query_str = self.query_str.replace("$" + tmp, "#MDD" + tmp + "#")
-
         exec_update_query_resp = rassrvr_execute_update_query(
             self.transaction.database.stub,
             self.transaction.database.connection.session.clientId,
@@ -478,17 +474,13 @@ class Query(object):
 
     def execute_insert(self):
 
-        iqr = QueryResult()
+        qr = QueryResult()
 
         if self.transaction.rw is False:
             raise Exception("Transaction does not have write access")
 
         if self.mdd_constants is not None:
             self._send_mdd_constants()
-
-        for i, param in enumerate(self.mdd_constants):
-            tmp = str(i + 1)
-            self.query_str = self.query_str.replace("$" + tmp, "#MDD" + tmp + "#")
 
         exec_insert_query_resp = rassrvr_execute_insert_query(
             self.transaction.database.stub,
@@ -497,18 +489,23 @@ class Query(object):
         )
 
         if exec_insert_query_resp.status == 0:
-            iqr.elements = self._get_mdd_collection()
+            qr.elements = self._get_mdd_collection()
         elif exec_insert_query_resp.status == 1:
             type_struct = get_type_structure_from_string(exec_insert_query_resp.type_structure)
-            iqr.elements = self._get_element_collection(type_struct)
+            qr.elements = self._get_element_collection(type_struct)
         elif exec_insert_query_resp.status == 2:
             # empty result, should not be treated as default case
             pass
         else:
             print(
                 f"Internal error: RasnetClientComm::executeQuery(): illegal status value {exec_insert_query_resp.status}")
+            qr.with_error = True
+            qr.err_no = exec_insert_query_resp.erroNo
+            qr.line_no = exec_insert_query_resp.lineNo
+            qr.col_no = exec_insert_query_resp.colNo
+            qr.token = exec_insert_query_resp.token
 
-        return iqr
+        return qr
 
     def execute_read(self):
         """
@@ -527,10 +524,10 @@ class Query(object):
         elif exec_query_resp.status == 0:
 
             # e.g: query: select c from RAS_COLLECTIONNAMES as c
-            if  "RAS_COLLECTIONNAMES" in self.query_str or \
-                "RAS_STRUCT_TYPES" in self.query_str or \
-                "RAS_MARRAY_TYPES" in self.query_str or \
-                "RAS_SET_TYPES" in self.query_str:
+            if "RAS_COLLECTIONNAMES" in self.query_str or \
+                    "RAS_STRUCT_TYPES" in self.query_str or \
+                    "RAS_MARRAY_TYPES" in self.query_str or \
+                    "RAS_SET_TYPES" in self.query_str:
                 return self._get_list_collection()
 
             # e.g: query: select c + 1 from test_mr as c, select encode(c, "png") from test_mr as c
@@ -636,11 +633,10 @@ class Query(object):
         Return the list of collection names from RASBASE for query (select c from RAS_COLLECTIONNAMES as c)
         :return: list of string collection names
         """
-        arr_temp = self.__get_array_result_mdd()
-        res_array = ResultArray("char")
-        for barr in arr_temp:
-            res_array.add_data(barr)
-        return res_array
+        result_array = ResultArray("string")
+        for r in self.__get_array_result_mdd():
+            result_array.add_data(encoded_bytes_to_str(r))
+        return result_array
 
     def _get_collection_result(self, exec_query_resp):
         """

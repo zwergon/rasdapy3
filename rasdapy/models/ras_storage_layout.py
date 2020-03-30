@@ -38,7 +38,6 @@ class RasStorageLayOut(object):
     # this size is related to max size that can be sent via gRPC
     DEFAULT_TILE_SIZE = 524288
 
-
     def __init__(self, tile_size=None, spatial_domain=None):
         """
         :param long tile_size: The current tile size in bytes (optional)
@@ -49,7 +48,8 @@ class RasStorageLayOut(object):
         self.tile_size = tile_size
 
     def decompose_mdd(self, gm_array):
-        pass
+        # by default no decomposition, return the mdd itself
+        return [gm_array]
 
 
 class BandStorageLayout(RasStorageLayOut):

@@ -1,6 +1,5 @@
 
 import numpy as np
-import pydicom
 import os
 import matplotlib.pyplot as plt
 
@@ -9,13 +8,13 @@ from rasdapy.cores.remote_procedures import *
 from rasdapy.db_connector import DBConnector
 from rasdapy.cores.utils import *
 from rasdapy import ras_oqlquery
-from models.ras_gmarray_builder import RasGMArrayBuilder
-#from example.read_mongo import read_drp
-from query_result import QueryResult
+from rasdapy.models.ras_gmarray_builder import RasGMArrayBuilder
+from rasdapy.query_result import QueryResult
+from rasdapy.models.ras_storage_layout import  RasStorageLayOut
 
 
 def dicom_read_array(filename):
-    dataset = pydicom.dcmread(filename)
+    dataset = None # pydicom.dcmread(filename)
     return dataset.pixel_array
 
 
@@ -26,6 +25,7 @@ def create_files(topdir, root_name):
             if root_name in file:
                 files.append(os.path.join(topdir, file))
     return files
+
 
 def import_raw(db_connector):
     tx = db_connector.db.transaction(rw=True)
@@ -103,18 +103,18 @@ def import_png( query_executor, png_filename ):
     else:
         print(q_result.error_message())
 
-raw_flag = False
-png_flag = False
-array_uint8 = False
-array_type_flag = False
-drop_flag = False
+raw_flag = True
+png_flag = True
+array_uint8 = True
+array_type_flag = True
+drop_flag = True
 mongo_flag = True
 dicom_flag = False
 
 if __name__ == '__main__':
 
-    db_connector = DBConnector("irlinv-rrbound", 7001, "rasadmin", "rasadmin")
-    #db_connector = None
+    RasStorageLayOut.DEFAULT_TILE_SIZE = 100 * 1024 * 1024
+    db_connector = DBConnector("localhost", 7001, "rasadmin", "rasadmin")
     query_executor = QueryExecutor(db_connector)
     db_connector.open()
 
@@ -122,13 +122,16 @@ if __name__ == '__main__':
         list_type = query_executor.execute_read("select c from RAS_MARRAY_TYPES as c")
         print(f"retrieves {list_type.size} types from rasdaman")
         for t in list_type:
-            print(t.decode())
+            print(t)
+
+    query_executor.execute_write("create collection gs1 GreySet1")
 
     if raw_flag:
         import_raw(db_connector)
 
     if png_flag:
-        oid = import_png(query_executor, "data/mr_1.png")
+        query_executor.execute_write("create collection mr GreySet")
+        oid = import_png(query_executor, "../data/mr_1.png")
         result = query_executor.execute_read(f"select a from mr as a where oid(a)={oid}")
         array = result.to_array()
         plt.imshow(array)
@@ -138,18 +141,19 @@ if __name__ == '__main__':
         query_executor.execute_write("create collection test GreySet1")
         list_collection = query_executor.execute_read("select c from RAS_COLLECTIONNAMES as c")
         for t in list_collection:
-            print(t.decode())
+            print(t)
 
         query_executor.execute_write("drop collection test")
         list_collection = query_executor.execute_read("select c from RAS_COLLECTIONNAMES as c")
         for t in list_collection:
-            print(t.decode())
+            print(t)
 
     if array_uint8:
         ras_array = create_uint8_array(4, 3, 2, False)
         print(ras_array)
         print(ras_array.data)
-        q_result = query_executor.execute_insert("insert into greycube values $1", ras_array)
+        query_executor.execute_write("create collection greycube GreySet3")
+        q_result = query_executor.execute_query("insert into greycube values $1", ras_array)
         if not q_result.error():
             elts = q_result.get_elements()
             print(elts)
@@ -161,20 +165,16 @@ if __name__ == '__main__':
             print(array.shape)
 
     if mongo_flag:
-        #img = read_drp()
-        #ras_array = RasGMArrayBuilder.from_np_array(img.cube.astype(np.float32))
+
         ras_array = create_3d_array(182, 180, 60)
-        mdd_itr = ras_array.storage_layout.decompose_mdd(ras_array)
-        for mdd in mdd_itr:
-            print(mdd.spatial_domain)
-        exit(0)
-        q_result = query_executor.execute_insert("insert into scanner values $1", ras_array)
+        query_executor.execute_write("create collection floatcube FloatSet3")
+        q_result = query_executor.execute_query("insert into floatcube values $1", ras_array)
         if not q_result.error():
             elts = q_result.get_elements()
             print(elts)
             oid = elts[0]
 
-            result = query_executor.execute_read(f"select a[150,*:*,*:*]  from scanner as a where oid(a)={oid}")
+            result = query_executor.execute_read(f"select a[150,*:*,*:*]  from floatcube as a where oid(a)={oid}")
             array = result.to_array()
             plt.imshow(array[:, :])
             plt.show()
@@ -186,7 +186,7 @@ if __name__ == '__main__':
         files = create_files("D:\\lecomtje\\Datas\\drp4ml\\serie1", "6804_002")
         ras_array = RasGMArrayBuilder.from_files(files, dicom_read_array)
         mdd_itr = ras_array.storage_layout.decompose_mdd(ras_array)
-        q_result = query_executor.execute_insert("insert into scube values $1", ras_array)
+        q_result = query_executor.execute_query("insert into scube values $1", ras_array)
         if not q_result.error():
             elts = q_result.get_elements()
             print(elts)
@@ -199,24 +199,6 @@ if __name__ == '__main__':
 
         else:
             print(q_result.error_message())
-
-
-    oid = 513
-    result = query_executor.execute_read(f"select a[*:*,*:*,128] from fs3_cube as a where oid(a)={oid}")
-    array = result.to_array()
-    plt.imshow(array[:, :])
-    plt.show()
-    # ras_array = create_3D_array(180, 180, 60)
-    # print(ras_array.spatial_domain, ras_array.storage_layout.spatial_domain)
-    # # ras_array.decompose_mdd()
-    # q_result = query_executor.execute_insert("insert into scanner values $1", ras_array)
-    # if not q_result.error():
-    #     elts = q_result.get_elements()
-    #     print(elts)
-    #     oid = elts[0]
-    # else:
-    #     print(q_result.error_message())
-
 
 
     db_connector.close()
