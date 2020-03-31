@@ -86,9 +86,9 @@ class RasOQLQuery(object):
         # Check what kind of internal helper methods should be used based on rasql query
         tmp_query = self.query.upper()
 
-        if tmp_query.startswith("SELECT") and "INTO" not in tmp_query:
+        if tmp_query.startswith("SELECT ") and "INTO " not in tmp_query:
             return self.execute_query(QueryType.SELECT)
-        elif tmp_query.startswith("INSERT"):
+        elif tmp_query.startswith("INSERT "):
             return self.execute_query(QueryType.INSERT)
         else:
             return self.execute_query(QueryType.UPDATE)

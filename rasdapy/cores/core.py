@@ -523,11 +523,13 @@ class Query(object):
             raise Exception("Error executing query '{}', error message '{}'".format(self.query_str, error_message))
         elif exec_query_resp.status == 0:
 
+            tmp_query = self.query_str.upper()
             # e.g: query: select c from RAS_COLLECTIONNAMES as c
-            if "RAS_COLLECTIONNAMES" in self.query_str or \
-                    "RAS_STRUCT_TYPES" in self.query_str or \
-                    "RAS_MARRAY_TYPES" in self.query_str or \
-                    "RAS_SET_TYPES" in self.query_str:
+            if "RAS_COLLECTIONNAMES" in tmp_query or \
+                    "RAS_STRUCT_TYPES" in tmp_query or \
+                    "RAS_MARRAY_TYPES" in tmp_query or \
+                    "RAS_SET_TYPES" in tmp_query or \
+                    "DBINFO" in tmp_query:
                 return self._get_list_collection()
 
             # e.g: query: select c + 1 from test_mr as c, select encode(c, "png") from test_mr as c

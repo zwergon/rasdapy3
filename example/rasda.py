@@ -8,10 +8,21 @@ from rasdapy.db_connector import DBConnector
 from rasdapy.models.ras_gmarray_builder import RasGMArrayBuilder
 from rasdapy.models.ras_storage_layout import  RasStorageLayOut
 
+# RasStorageLayOut.DEFAULT_TILE_SIZE = 100 * 1024 * 1024
+ras_host = "localhost"
+ras_port = 7001
 
-def dicom_read_array(filename):
-    dataset = None # pydicom.dcmread(filename)
-    return dataset.pixel_array
+png_flag = True
+array_uint8 = True
+array_float = True
+files_flag = True
+array_type_flag = True
+drop_flag = True
+update_flag = True
+
+
+def read_tif_file(filename):
+    return plt.imread(filename)
 
 
 def create_files(topdir, root_name):
@@ -59,16 +70,12 @@ def import_png( query_executor, png_filename ):
     else:
         print(q_result.error_message())
 
-png_flag = True
-array_uint8 = True
-array_type_flag = True
-drop_flag = True
-array_float = True
-dicom_flag = False
 
 if __name__ == '__main__':
 
-    RasStorageLayOut.DEFAULT_TILE_SIZE = 100 * 1024 * 1024
+    data_dir = os.path.join(os.path.curdir, "../data")
+    print(data_dir)
+
     db_connector = DBConnector("localhost", 7001, "rasadmin", "rasadmin")
     query_executor = QueryExecutor(db_connector)
     db_connector.open()
@@ -83,7 +90,7 @@ if __name__ == '__main__':
 
     if png_flag:
         query_executor.execute_write("create collection mr GreySet")
-        oid = import_png(query_executor, "../data/mr_1.png")
+        oid = import_png(query_executor, os.path.join(data_dir, "mr_1.png"))
         result = query_executor.execute_read(f"select a from mr as a where oid(a)={oid}")
         array = result.to_array()
         plt.imshow(array)
@@ -134,24 +141,47 @@ if __name__ == '__main__':
         else:
             print(q_result.error_message())
 
-    if dicom_flag:
-        files = create_files("D:\\lecomtje\\Datas\\drp4ml\\serie1", "6804_002")
-        ras_array = RasGMArrayBuilder.from_files(files, dicom_read_array)
-        mdd_itr = ras_array.storage_layout.decompose_mdd(ras_array)
-        q_result = query_executor.execute_query("insert into scube values $1", ras_array)
+    if files_flag:
+        files = create_files(data_dir, "slice")
+        print(files)
+        query_executor.execute_write("create collection u16s3 UShortSet3")
+        ras_array = RasGMArrayBuilder.from_files(files, read_tif_file)
+        q_result = query_executor.execute_query(f"insert into u16s3 values $1", ras_array)
         if not q_result.error():
             elts = q_result.get_elements()
-            print(elts)
             oid = elts[0]
+            print(f"stored oid :{oid}")
 
-            result = query_executor.execute_read(f"select a[128,*:*,*:*]  from scube as a where oid(a)={oid}")
-            array = result.to_array()
-            plt.imshow(array[:, :])
-            plt.show()
+        result = query_executor.execute_read(f"select a[1,*:*,*:*]  from u16s3 as a where oid(a)={oid}")
+        array = result.to_array()
+        plt.imshow(array[:, :])
+        plt.show()
 
-        else:
-            print(q_result.error_message())
+    if update_flag:
+        query_executor.execute_write("create collection u16s3 UShortSet3")
+        q_result = query_executor.execute_query("insert into u16s3 values marray it in [0:0,0:0,0:0] values 0us", None)
+        if not q_result.error():
+            elts = q_result.get_elements()
+            oid = elts[0]
+            print(f"stored oid :{oid}")
+        res = query_executor.execute_read(f"select sdom(c) from u16s3 as c where oid(c)={oid}")
+        for i in res:
+            print(i)
+        query_executor.execute_update_from_file(
+            f"update u16s3 as c set c[0,*:*,*:*] assign inv_tiff($1) where oid(c)={oid}",
+            os.path.join(data_dir, "slice00000.tif"))
+        query_executor.execute_update_from_file(
+            f"update u16s3 as c set c[1,*:*,*:*] assign inv_tiff($1) where oid(c)={oid}",
+            os.path.join(data_dir, "slice00001.tif"))
+        res = query_executor.execute_read(f"select sdom(c) from u16s3 as c where oid(c)={oid}")
+        for i in res:
+            print(i)
 
+    query_executor.execute_write("drop collection gs1")
+    query_executor.execute_write("drop collection u16s3")
+    query_executor.execute_write("drop collection greycube")
+    query_executor.execute_write("drop collection mr")
+    query_executor.execute_write("drop collection floatcube")
 
     db_connector.close()
 
