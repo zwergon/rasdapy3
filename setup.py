@@ -114,6 +114,7 @@ setup(
     entry_points={
         'console_scripts': [
             'generate_stubs=scripts.stub_generator.__main__:main',
+            'pyrasql = rasql.rasql:main'
         ],
     },
 )

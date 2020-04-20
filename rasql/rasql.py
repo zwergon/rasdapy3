@@ -263,10 +263,14 @@ class Main:
                     text_file.write(output)
 
 
-if __name__ == "__main__":
+def main():
     main = Main()
     # Execute the rasql query and return result to console/file
     main.execute()
+
+
+if __name__ == "__main__":
+    main()
 
 
 
