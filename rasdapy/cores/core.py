@@ -602,7 +602,7 @@ class Query(object):
                     # MDD consists of more than one tile or the tile does not cover the whole domain
                     if tileCntr == 1:
                         size = mdd_result.spatial_domain.cell_count * mdd_result.type_length
-                        print(f"size is {size}")
+                        #print(f"size is {size}")
                         array = bytearray(size)
 
                     # copy tile data into MDD data space (optimized, relying on the internal representation of an MDD )
