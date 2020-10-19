@@ -577,7 +577,10 @@ class Query(object):
         # print(f"full domain {mdd_result.spatial_domain}")
         tilestatus = 2
         tileCntr = 0
+        tileOffset = 0
         array = b''
+
+
         while tilestatus == 2 or tilestatus == 3:
             tileresp = rassrvr_get_next_tile(self.transaction.database.stub,
                                              self.transaction.database.connection.session.clientId)
@@ -602,19 +605,26 @@ class Query(object):
                     # MDD consists of more than one tile or the tile does not cover the whole domain
                     if tileCntr == 1:
                         size = mdd_result.spatial_domain.cell_count * mdd_result.type_length
-                        #print(f"size is {size}")
                         array = bytearray(size)
 
-                    # copy tile data into MDD data space (optimized, relying on the internal representation of an MDD )
-                    bloc_cells = tile_domain.intervals[tile_domain.cardinality - 1].width
-                    bloc_size = bloc_cells * mdd_result.type_length
-                    bloc_no = int(tile_domain.cell_count / bloc_cells)
+                    """
+                        so far assume that the tile that was just retrieved is in correct size in memory to be append directly
+                    """
+                    bloc_size = len(tileresp.data)
+                    #print(bloc_size)
+                    array[tileOffset:tileOffset+bloc_size] = tileresp.data
+                    tileOffset += bloc_size
 
-                    tile_offset = 0
-                    for bloc_ctr in range(bloc_no):
-                        offset = mdd_result.spatial_domain.cell_offset( tile_domain.cell_point(bloc_ctr*bloc_cells))* mdd_result.type_length
-                        array[offset:offset+bloc_size] = tileresp.data[tile_offset:tile_offset+bloc_size]
-                        tile_offset += bloc_size
+                    # # copy tile data into MDD data space (optimized, relying on the internal representation of an MDD )
+                    # bloc_cells = tile_domain.intervals[tile_domain.cardinality - 1].width
+                    # bloc_size = bloc_cells * mdd_result.type_length
+                    # bloc_no = int(tile_domain.cell_count / bloc_cells)
+                    #
+                    # tile_offset = 0
+                    # for bloc_ctr in range(bloc_no):
+                    #     offset = mdd_result.spatial_domain.cell_offset( tile_domain.cell_point(bloc_ctr*bloc_cells))* mdd_result.type_length
+                    #     array[offset:offset+bloc_size] = tileresp.data[tile_offset:tile_offset+bloc_size]
+                    #     tile_offset += bloc_size
 
             else:
                 if tileCntr == 1:
