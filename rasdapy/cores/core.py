@@ -593,7 +593,7 @@ class Query(object):
 
         read_size = 0
 
-        tile_status = 2 # call get_next_tile at least once
+        tile_status = 2  # call get_next_tile at least once
         while tile_status == 2 or tile_status == 3:
             tileresp = rassrvr_get_next_tile(self.transaction.database.stub,
                                              self.transaction.database.connection.session.clientId)
@@ -605,11 +605,11 @@ class Query(object):
                 mdd_result = RasGMArray(
                     spatial_domain=MInterval.from_str(mdd_resp.domain),
                     type_length=tileresp.cell_type_length)
-                print(f"full domain {mdd_result.spatial_domain} with format {mdd_result.format}")
-                print(f"need to read {mdd_result.byte_size} bytes")
+                #print(f"full domain {mdd_result.spatial_domain} with format {mdd_result.format}")
+                #print(f"need to read {mdd_result.byte_size} bytes")
 
             tile_idx += 1
-            print(f"tile {tile_idx}")
+            #print(f"tile {tile_idx}")
 
             # Creates current tile array
             mdd_tile = RasGMArray(
@@ -625,8 +625,8 @@ class Query(object):
             # At that point, data array of the mdd_tile should be complete for its spatial_domain
 
             read_size += len(mdd_tile.data)
-            print(f"read {read_size} bytes so far")
-            print(f"tile domain {mdd_tile.spatial_domain}")
+            #print(f"read {read_size} bytes so far")
+            #print(f"tile domain {mdd_tile.spatial_domain}")
 
             if tile_status < 2 and tile_idx == 1 and str(mdd_tile.spatial_domain) == str(mdd_result.spatial_domain):
                 # MDD consists of just one tile that is the same size of the mdd
