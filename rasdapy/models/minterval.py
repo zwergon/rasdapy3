@@ -35,14 +35,11 @@ class MInterval(object):
         :param intervals: the List of SIntervals
         """
         self.intervals = intervals
+        self.cardinality = len(intervals)
 
     @property
     def empty(self):
         return self.cardinality == 0
-
-    @property
-    def cardinality(self):
-        return len(self.intervals)
 
     @property
     def cell_count(self):
@@ -76,18 +73,17 @@ class MInterval(object):
         :param tuple: (i, j, k,...) coordinates in all dimensions
         :return: offset in raw array (memory ordering)
         """
-        dimensionality = len(tuple)
+        offset_ = 0
+        cur_interval = self.intervals[0]
+        for i in range(0, self.cardinality-1):
+            next_interval = self.intervals[i+1]
+            offset_ = (offset_ + (tuple[i] - cur_interval.lo))*next_interval.width
+            cur_interval = next_interval
 
-        offset = 0
-        extent = self.get_extent()
-        for i in range(0, dimensionality-1):
-            interval = self.intervals[i]
-            offset = (offset + (tuple[i] - interval.lo))*extent[i+1]
+        i = self.cardinality - 1
+        offset_ += (tuple[i] - self.intervals[i].lo)
 
-        i = dimensionality - 1
-        offset += (tuple[i] - self.intervals[i].lo)
-
-        return offset
+        return offset_
 
     @property
     def shape(self):
@@ -130,6 +126,24 @@ class MInterval(object):
             intervals.append(SInterval(0, i_max - 1))
         return MInterval(intervals)
 
+    def _inner_cartesian_product(self, list, t, depth):
+        if depth == self.cardinality:
+            list.append(tuple(t.copy()))
+            return
+
+        interval = self.intervals[depth]
+        for i in range(interval.lo, interval.hi + 1):
+            t[depth] = i
+            self._inner_cartesian_product(list, t, depth=depth + 1)
+
+    def cartesian_product(self):
+        list = []
+        t = [0 for i in range(self.cardinality)]
+        depth = 0
+        self._inner_cartesian_product(list, t, depth)
+
+        return list
+
 
 if __name__ == '__main__':
     minterval = MInterval.from_str("[0:511, 0:511, 0:253]")
@@ -157,3 +171,11 @@ if __name__ == '__main__':
     offset = minterval.cell_offset(ori)
     ret = minterval.cell_point(offset)
     print(ori, offset, ret)
+
+    i1 = SInterval(200, 210)
+    i2 = SInterval(300, 305)
+    i3 = SInterval(400, 400)
+    m = MInterval([i1, i2, i3])
+
+    l = m.cartesian_product()
+    print(l)
