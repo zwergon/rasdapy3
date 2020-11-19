@@ -583,7 +583,8 @@ class Query(object):
 
             if tile_status == 4:
                 raise Exception("rpcGetNextTile - no tile to transfer or empty collection")
-            return tileresp.data
+
+            return tile_status, tileresp.data
 
         # At that point, we try to read a binary array.
 
