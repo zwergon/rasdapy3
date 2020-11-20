@@ -35,33 +35,33 @@ class MInterval(object):
         :param intervals: the List of SIntervals
         """
         self.intervals = intervals
-        self.cardinality = len(intervals)
+        self.dimension = len(intervals)
 
     @property
     def empty(self):
-        return self.cardinality == 0
+        return self.dimension == 0
 
     @property
     def cell_count(self):
         cell_count = 1
         for interval in self.intervals:
-            cell_count *= interval.width
+            cell_count *= interval.extent
         return cell_count
 
     def get_extent(self):
         extent = ()
         for interval in self.intervals:
-            extent += (interval.width,)
+            extent += (interval.extent,)
         return extent
 
     def cell_point(self, offset):
         factor = 1
         for interval in self.intervals:
-            factor *= interval.width
+            factor *= interval.extent
 
         pt = ()
         for interval in self.intervals:
-            factor /= interval.width
+            factor /= interval.extent
             coord = interval.lo + ((offset - (offset % factor)) / factor)
             pt += (int(coord),)
             offset %= factor
@@ -75,12 +75,12 @@ class MInterval(object):
         """
         offset_ = 0
         cur_interval = self.intervals[0]
-        for i in range(0, self.cardinality-1):
+        for i in range(0, self.dimension - 1):
             next_interval = self.intervals[i+1]
-            offset_ = (offset_ + (tuple[i] - cur_interval.lo))*next_interval.width
+            offset_ = (offset_ + (tuple[i] - cur_interval.lo))*next_interval.extent
             cur_interval = next_interval
 
-        i = self.cardinality - 1
+        i = self.dimension - 1
         offset_ += (tuple[i] - self.intervals[i].lo)
 
         return offset_
@@ -127,7 +127,7 @@ class MInterval(object):
         return MInterval(intervals)
 
     def _inner_cartesian_product(self, list, t, depth):
-        if depth == self.cardinality:
+        if depth == self.dimension:
             list.append(tuple(t.copy()))
             return
 
@@ -138,44 +138,10 @@ class MInterval(object):
 
     def cartesian_product(self):
         list = []
-        t = [0 for i in range(self.cardinality)]
+        t = [0 for i in range(self.dimension)]
         depth = 0
         self._inner_cartesian_product(list, t, depth)
 
         return list
 
 
-if __name__ == '__main__':
-    minterval = MInterval.from_str("[0:511, 0:511, 0:253]")
-    ori = (255, 255, 127)
-    offset = minterval.cell_offset(ori)
-    ret = minterval.cell_point(offset)
-    print( ori, offset, ret)
-
-    ori = (0, 0, 0)
-    offset = minterval.cell_offset(ori)
-    ret = minterval.cell_point(offset)
-    print(ori, offset, ret)
-
-    ori = (1, 0, 0)
-    offset = minterval.cell_offset(ori)
-    ret = minterval.cell_point(offset)
-    print(ori, offset, ret)
-
-    ori = (0, 1, 0)
-    offset = minterval.cell_offset(ori)
-    ret = minterval.cell_point(offset)
-    print(ori, offset, ret)
-
-    ori = (0, 0, 1)
-    offset = minterval.cell_offset(ori)
-    ret = minterval.cell_point(offset)
-    print(ori, offset, ret)
-
-    i1 = SInterval(200, 210)
-    i2 = SInterval(300, 305)
-    i3 = SInterval(400, 400)
-    m = MInterval([i1, i2, i3])
-
-    l = m.cartesian_product()
-    print(l)

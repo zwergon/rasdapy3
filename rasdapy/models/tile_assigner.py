@@ -27,7 +27,7 @@ class TileAssigner(threading.Thread):
     def _write_in_mdd(self, mdd_tile):
         mdd_result = self.gm_global
         tile_domain = mdd_tile.spatial_domain
-        bloc_cells = tile_domain.intervals[tile_domain.cardinality - 1].width
+        bloc_cells = tile_domain.intervals[tile_domain.dimension - 1].extent
         bloc_size = bloc_cells * mdd_tile.type_length
 
         mv = memoryview(mdd_tile.data)
@@ -38,7 +38,7 @@ class TileAssigner(threading.Thread):
         #    t = tile_domain.cell_point(bloc_ctr * bloc_cells)
 
         intervals = tile_domain.intervals.copy()
-        intervals[tile_domain.cardinality - 1].hi = intervals[tile_domain.cardinality - 1].lo
+        intervals[tile_domain.dimension - 1].hi = intervals[tile_domain.dimension - 1].lo
         m_iter = MInterval(intervals)
         for t in m_iter.cartesian_product():
             offset = mdd_result.spatial_domain.cell_offset(t) * mdd_result.type_length

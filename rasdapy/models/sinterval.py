@@ -32,7 +32,7 @@ class SInterval(object):
     def __init__(self, lo, hi):
         self.lo = int(lo)
         self.hi = int(hi)
-        self.width = self.hi - self.lo + 1
+        self.extent = self.hi - self.lo + 1
 
     def __str__(self):
         """
