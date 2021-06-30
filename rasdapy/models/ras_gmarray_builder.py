@@ -64,6 +64,11 @@ class RasGMArrayBuilder:
             2: "DoubleImage",
             3: "DoubleCube"
         },
+        "float64": {
+            1: "DoubleString",
+            2: "DoubleImage",
+            3: "DoubleCube"
+        },
         "cint16": {
             1: "CInt16Image"
         },
